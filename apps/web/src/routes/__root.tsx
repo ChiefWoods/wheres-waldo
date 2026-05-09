@@ -2,6 +2,7 @@ import { Link, Outlet, createRootRoute } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { Button } from "@workspace/ui/components/button";
 import { Moon, Sun } from "lucide-react";
+import { Toaster } from "sonner";
 
 import { useTheme } from "@/components/theme-provider";
 import { defaultSceneSlug } from "@/lib/scenes";
@@ -50,6 +51,7 @@ function RootLayout() {
       <main className="mx-auto w-full max-w-5xl p-4">
         <Outlet />
       </main>
+      <Toaster theme={isDark ? "dark" : "light"} richColors closeButton />
       <TanStackRouterDevtools position="bottom-right" />
     </div>
   );
