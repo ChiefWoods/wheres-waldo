@@ -20,6 +20,7 @@
     "db:migrate": "bunx --bun prisma migrate dev --name init",
     "db:generate": "bunx --bun prisma generate",
     "db:seed": "bun prisma/seed.ts",
+    "db:update": "bun prisma/update.ts",
     "db:reset": "bunx --bun prisma migrate reset",
     "db:studio": "bunx --bun -p better-sqlite3 -p prisma prisma studio --url file:./data/dev.db"
   },
