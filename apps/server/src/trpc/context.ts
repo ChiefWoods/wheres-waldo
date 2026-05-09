@@ -1,7 +1,14 @@
 import type { CreateFastifyContextOptions } from "@trpc/server/adapters/fastify";
+
+import type { PrismaClient } from "../../generated/prisma/client";
+
 const createContext = ({ req, res }: CreateFastifyContextOptions) => {
+  const serverWithPrisma = req.server as typeof req.server & {
+    prisma: PrismaClient;
+  };
+
   return {
-    prisma: req.server.prisma,
+    prisma: serverWithPrisma.prisma,
     req,
     res,
   };
