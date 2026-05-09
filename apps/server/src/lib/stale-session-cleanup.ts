@@ -30,13 +30,15 @@ type CleanupCycleResult = {
 };
 
 class StaleSessionCleanupScheduler {
+  private readonly prisma: SessionCleanupPrisma;
+  private readonly logger: SessionCleanupLogger;
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private runningCleanup = false;
 
-  constructor(
-    private readonly prisma: SessionCleanupPrisma,
-    private readonly logger: SessionCleanupLogger,
-  ) {}
+  constructor(prisma: SessionCleanupPrisma, logger: SessionCleanupLogger) {
+    this.prisma = prisma;
+    this.logger = logger;
+  }
 
   isRunning(): boolean {
     return this.intervalId !== null;
