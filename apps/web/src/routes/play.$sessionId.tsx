@@ -24,6 +24,13 @@ type MenuState = ClickAttempt & {
   sceneY: number;
 };
 
+type RenderedSceneBox = {
+  offsetX: number;
+  offsetY: number;
+  renderedWidth: number;
+  renderedHeight: number;
+};
+
 export const Route = createFileRoute("/play/$sessionId")({
   component: PlaySessionRoute,
 });
@@ -42,6 +49,7 @@ function PlaySessionRoute() {
   const hasTerminatedSessionRef = useRef(false);
   const hasRedirectedAfterFinishRef = useRef(false);
   const rightColumnRef = useRef<HTMLDivElement | null>(null);
+  const sceneButtonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [naturalDimensions, setNaturalDimensions] = useState<{
     width: number;
@@ -50,6 +58,7 @@ function PlaySessionRoute() {
   const [lastAttempt, setLastAttempt] = useState<ClickAttempt | null>(null);
   const [menuState, setMenuState] = useState<MenuState | null>(null);
   const [asideMaxHeight, setAsideMaxHeight] = useState<number | null>(null);
+  const [renderedSceneBox, setRenderedSceneBox] = useState<RenderedSceneBox | null>(null);
   const [redirectCountdown, setRedirectCountdown] = useState(3);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const isDev = import.meta.env.DEV;
@@ -73,6 +82,8 @@ function PlaySessionRoute() {
   const foundCount = sessionData?.foundCount ?? foundCharacterIds.size;
   const isGameFinished =
     sessionData?.status === "FINISHED" || (totalTargets > 0 && foundCount >= totalTargets);
+  const sourceWidth = scene?.width ?? naturalDimensions?.width;
+  const sourceHeight = scene?.height ?? naturalDimensions?.height;
 
   const sceneAsset = useMemo(() => {
     if (!scene) {
@@ -205,6 +216,50 @@ function PlaySessionRoute() {
       observer.disconnect();
     };
   }, []);
+
+  useEffect(() => {
+    const sceneButton = sceneButtonRef.current;
+    if (!sceneButton || !scene?.id) {
+      setRenderedSceneBox(null);
+      return;
+    }
+
+    if (!sourceWidth || !sourceHeight || sourceWidth <= 0 || sourceHeight <= 0) {
+      setRenderedSceneBox(null);
+      return;
+    }
+
+    const updateRenderedSceneBox = () => {
+      const containerWidth = sceneButton.clientWidth;
+      const containerHeight = sceneButton.clientHeight;
+      if (containerWidth <= 0 || containerHeight <= 0) {
+        setRenderedSceneBox(null);
+        return;
+      }
+
+      const scale = Math.min(containerWidth / sourceWidth, containerHeight / sourceHeight);
+      const renderedWidth = sourceWidth * scale;
+      const renderedHeight = sourceHeight * scale;
+      const offsetX = (containerWidth - renderedWidth) / 2;
+      const offsetY = (containerHeight - renderedHeight) / 2;
+
+      setRenderedSceneBox({
+        offsetX,
+        offsetY,
+        renderedWidth,
+        renderedHeight,
+      });
+    };
+
+    updateRenderedSceneBox();
+
+    const observer = new ResizeObserver(updateRenderedSceneBox);
+    observer.observe(sceneButton);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [scene?.id, sourceWidth, sourceHeight]);
 
   useEffect(() => {
     if (isSessionNotFound || isGameFinished) {
@@ -442,6 +497,7 @@ function PlaySessionRoute() {
 
           <div className="relative">
             <button
+              ref={sceneButtonRef}
               type="button"
               onClick={handleSceneClick}
               className="bg-muted relative block h-[clamp(380px,68vh,860px)] w-full min-w-0 overflow-hidden rounded-lg border text-left"
@@ -472,8 +528,32 @@ function PlaySessionRoute() {
               )}
             </button>
 
+            {!isSessionNotFound && renderedSceneBox
+              ? sceneCharactersWithAssets
+                  .filter((character) => character.found)
+                  .map((character) => {
+                    const left =
+                      renderedSceneBox.offsetX +
+                      character.targetXNorm * renderedSceneBox.renderedWidth;
+                    const top =
+                      renderedSceneBox.offsetY +
+                      character.targetYNorm * renderedSceneBox.renderedHeight;
+
+                    return (
+                      <div
+                        key={`found-marker-${character.id}`}
+                        className="pointer-events-none absolute z-10 size-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-green-500 bg-green-500/30 shadow-[0_0_0_2px_rgba(0,0,0,0.35)]"
+                        style={{
+                          left: `${left}px`,
+                          top: `${top}px`,
+                        }}
+                      />
+                    );
+                  })
+              : null}
+
             {isGameFinished && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/55 p-4 text-center">
+              <div className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-black/55 p-4 text-center">
                 <div className="bg-card text-card-foreground border-border w-full max-w-sm rounded-lg border p-4">
                   <p className="text-lg font-semibold">All characters found!</p>
                   <p className="text-muted-foreground mt-2 text-sm">
