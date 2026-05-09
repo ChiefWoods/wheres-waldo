@@ -2,14 +2,14 @@
   "name": "server",
   "version": "1.0.0",
   "description": "This project was bootstrapped with Fastify-CLI.",
-  "main": "app.ts",
+  "main": "index.ts",
   "type": "module",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "dev": "fastify start --ignore-watch=.ts$ -w -l info -P src/app.ts",
-    "start": "fastify start -l info -P src/app.ts",
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
     "test": "bun test",
     "lint": "oxlint --no-error-on-unmatched-pattern",
     "lint:fix": "oxlint --fix --no-error-on-unmatched-pattern",
