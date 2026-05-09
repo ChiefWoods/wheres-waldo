@@ -4,7 +4,6 @@ import type { prisma as PrismaClientInstance } from "../../src/lib/prisma.ts";
 import type { Context } from "../../src/trpc/context.ts";
 import type { appRouter as AppRouterInstance } from "../../src/trpc/routers/app.ts";
 
-import { DEFAULT_TOLERANCE_NORM } from "../../src/lib/game-config.ts";
 import {
   isStaleSessionCleanupSchedulerRunning,
   runStaleSessionCleanupCycle,
@@ -101,21 +100,18 @@ const seedBaseData = async (): Promise<SeedData> => {
         character_id: waldo.id,
         target_x_norm: 0.5,
         target_y_norm: 0.5,
-        tolerance_norm: DEFAULT_TOLERANCE_NORM,
       },
       {
         scene_id: activeScene.id,
         character_id: wenda.id,
         target_x_norm: 0.2,
         target_y_norm: 0.25,
-        tolerance_norm: DEFAULT_TOLERANCE_NORM,
       },
       {
         scene_id: secondScene.id,
         character_id: wizard.id,
         target_x_norm: 0.6,
         target_y_norm: 0.6,
-        tolerance_norm: DEFAULT_TOLERANCE_NORM,
       },
     ],
   });

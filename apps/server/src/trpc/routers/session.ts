@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { Prisma } from "../../../generated/prisma/client";
+import { DEFAULT_TOLERANCE_NORM } from "../../lib/game-config.ts";
 import { ensureStaleSessionCleanupSchedulerRunning } from "../../lib/stale-session-cleanup.ts";
 import { publicProcedure, router } from "../trpc.ts";
 
@@ -165,7 +166,6 @@ const sessionRouter = router({
             id: true,
             target_x_norm: true,
             target_y_norm: true,
-            tolerance_norm: true,
           },
         });
 
@@ -179,7 +179,7 @@ const sessionRouter = router({
         const deltaX = input.xNorm - sceneCharacter.target_x_norm;
         const deltaY = input.yNorm - sceneCharacter.target_y_norm;
         const distance = Math.hypot(deltaX, deltaY);
-        const isCorrect = distance <= sceneCharacter.tolerance_norm;
+        const isCorrect = distance <= DEFAULT_TOLERANCE_NORM;
 
         if (!isCorrect) {
           const [foundCount, totalTargets] = await Promise.all([

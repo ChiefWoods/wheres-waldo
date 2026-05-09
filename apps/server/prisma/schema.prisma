@@ -40,7 +40,6 @@ model SceneCharacter {
   character_id    Int
   target_x_norm   Float
   target_y_norm   Float
-  tolerance_norm  Float             @default(0.02)
   scene           Scene             @relation(fields: [scene_id], references: [id], onDelete: Cascade)
   character       Character         @relation(fields: [character_id], references: [id], onDelete: Cascade)
   discoveries     Discovery[]

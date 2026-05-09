@@ -4,7 +4,6 @@ import { basename, extname, resolve } from "node:path";
 import Papa from "papaparse";
 
 import { PrismaClient } from "../generated/prisma/client";
-import { DEFAULT_TOLERANCE_NORM } from "../src/lib/game-config.ts";
 
 const IMAGE_SCENES_DIR = resolve(import.meta.dir, "../../web/assets/scenes");
 const IMAGE_CHARACTERS_DIR = resolve(import.meta.dir, "../../web/assets/characters");
@@ -315,12 +314,10 @@ const seedDatabase = async (prisma: PrismaClient) => {
           character_id: characterId,
           target_x_norm: xNorm,
           target_y_norm: yNorm,
-          tolerance_norm: DEFAULT_TOLERANCE_NORM,
         },
         update: {
           target_x_norm: xNorm,
           target_y_norm: yNorm,
-          tolerance_norm: DEFAULT_TOLERANCE_NORM,
         },
       });
 
