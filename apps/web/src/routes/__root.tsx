@@ -1,4 +1,4 @@
-import { Link, Outlet, createRootRoute, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, createRootRoute } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { Button } from "@workspace/ui/components/button";
 import { Moon, Sun } from "lucide-react";
@@ -11,9 +11,6 @@ export const Route = createRootRoute({
 });
 
 function RootLayout() {
-  const location = useRouterState({
-    select: (state) => state.location,
-  });
   const { setTheme, theme } = useTheme();
   const prefersDark =
     typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -48,9 +45,6 @@ function RootLayout() {
           >
             {isDark ? <Sun /> : <Moon />}
           </Button>
-          <span className="text-muted-foreground hidden font-mono text-xs sm:inline">
-            {location.pathname}
-          </span>
         </nav>
       </header>
       <main className="mx-auto w-full max-w-5xl p-4">
