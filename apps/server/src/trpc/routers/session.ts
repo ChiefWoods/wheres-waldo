@@ -59,7 +59,7 @@ const sessionRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.prisma.$transaction(async (tx) => {
+      return ctx.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         const session = await tx.session.findUnique({
           where: { id: input.sessionId },
           select: {
@@ -260,7 +260,7 @@ const sessionRouter = router({
         page: input.page,
         pageSize: input.pageSize,
         total,
-        rows: rows.map((row) => ({
+        rows: rows.map((row: (typeof rows)[number]) => ({
           sessionId: row.id,
           sceneId: row.scene_id,
           attempts: row.attempts,

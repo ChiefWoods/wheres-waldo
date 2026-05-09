@@ -60,7 +60,9 @@ const sceneRouter = router({
         width: scene.width,
         height: scene.height,
         totalTargets: scene.sceneCharacters.length,
-        characters: scene.sceneCharacters.map((entry) => entry.character),
+        characters: scene.sceneCharacters.map(
+          (entry: (typeof scene.sceneCharacters)[number]) => entry.character,
+        ),
       };
     }),
 });
