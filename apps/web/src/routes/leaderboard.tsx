@@ -1,3 +1,6 @@
+import bronzeTrophyIcon from "/assets/trophy/bronze.svg";
+import goldTrophyIcon from "/assets/trophy/gold.svg";
+import silverTrophyIcon from "/assets/trophy/silver.svg";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
@@ -42,9 +45,9 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 const DEFAULT_PAGE_SIZE = PAGE_SIZE_OPTIONS[0];
 const SKELETON_ROW_COUNT = 5;
 const RANK_TROPHY_BY_POSITION: Record<number, string> = {
-  1: "/assets/trophy/gold.svg",
-  2: "/assets/trophy/silver.svg",
-  3: "/assets/trophy/bronze.svg",
+  1: goldTrophyIcon,
+  2: silverTrophyIcon,
+  3: bronzeTrophyIcon,
 };
 
 const columnHelper = createColumnHelper<LeaderboardRow>();
