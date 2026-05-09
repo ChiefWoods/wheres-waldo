@@ -9,11 +9,13 @@
     "lint:fix": "turbo lint:fix",
     "format": "turbo format",
     "format:check": "turbo format:check",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "prepare": "husky"
   },
   "devDependencies": {
     "oxfmt": "^0.48.0",
     "oxlint": "^1.63.0",
+    "husky": "^9.1.7",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "turbo": "^2.8.17",
