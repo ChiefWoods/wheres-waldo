@@ -6,10 +6,14 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix",
     "format": "turbo format",
+    "format:check": "turbo format:check",
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {
+    "oxfmt": "^0.48.0",
+    "oxlint": "^1.63.0",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "turbo": "^2.8.17",
