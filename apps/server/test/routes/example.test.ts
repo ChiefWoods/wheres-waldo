@@ -1,13 +1,17 @@
-import { test } from 'node:test'
-import * as assert from 'node:assert'
-import { build } from '../helper'
+import { expect, test } from "bun:test";
 
-test('example is loaded', async (t) => {
-  const app = await build(t)
+import { build } from "../helper";
 
-  const res = await app.inject({
-    url: '/example'
-  })
+test("example is loaded", async () => {
+  const app = await build();
 
-  assert.equal(res.payload, 'this is an example')
-})
+  try {
+    const res = await app.inject({
+      url: "/example",
+    });
+
+    expect(res.payload).toBe("this is an example");
+  } finally {
+    await app.close();
+  }
+});

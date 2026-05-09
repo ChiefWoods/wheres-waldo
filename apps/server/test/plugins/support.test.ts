@@ -1,14 +1,13 @@
-import { test } from 'node:test'
-import * as assert from 'node:assert'
+import { expect, test } from "bun:test";
+import Fastify from "fastify";
 
-import Fastify from 'fastify'
-import Support from '../../src/plugins/support'
+import Support from "../../src/plugins/support";
 
-test('support works standalone', async (t) => {
-  const fastify = Fastify()
+test("support works standalone", async () => {
+  const fastify = Fastify();
   // eslint-disable-next-line no-void
-  void fastify.register(Support)
-  await fastify.ready()
+  void fastify.register(Support);
+  await fastify.ready();
 
-  assert.equal(fastify.someSupport(), 'hugs')
-})
+  expect(fastify.someSupport()).toBe("hugs");
+});

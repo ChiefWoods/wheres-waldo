@@ -1,6 +1,5 @@
+import { expect, test } from "bun:test";
 import Fastify from "fastify";
-import * as assert from "node:assert";
-import { test } from "node:test";
 
 import PrismaPlugin from "../../src/plugins/prisma";
 
@@ -11,7 +10,7 @@ test("prisma plugin decorates fastify instance", async () => {
 
   await fastify.ready();
 
-  assert.ok(fastify.prisma);
+  expect(fastify.prisma).toBeDefined();
 
   await fastify.close();
 });
