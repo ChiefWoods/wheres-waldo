@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { type MouseEvent as ReactMouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { characters } from "@/lib/characters";
@@ -37,8 +37,10 @@ function formatElapsedMs(elapsedMs: number): string {
 
 function PlaySessionRoute() {
   const { sessionId } = Route.useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const hasTerminatedSessionRef = useRef(false);
+  const hasRedirectedAfterFinishRef = useRef(false);
   const rightColumnRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [naturalDimensions, setNaturalDimensions] = useState<{
@@ -48,6 +50,7 @@ function PlaySessionRoute() {
   const [lastAttempt, setLastAttempt] = useState<ClickAttempt | null>(null);
   const [menuState, setMenuState] = useState<MenuState | null>(null);
   const [asideMaxHeight, setAsideMaxHeight] = useState<number | null>(null);
+  const [redirectCountdown, setRedirectCountdown] = useState(3);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const isDev = import.meta.env.DEV;
 
@@ -126,7 +129,7 @@ function PlaySessionRoute() {
           `Character is found! ${Math.max(0, result.totalTargets - result.foundCount)} more to go`,
         );
       } else {
-        toast.error("No correct character found here...");
+        toast.error("No character found here...");
       }
     },
     onError: (error) => {
@@ -210,11 +213,46 @@ function PlaySessionRoute() {
   }, [isSessionNotFound, isGameFinished]);
 
   useEffect(() => {
+    if (!isGameFinished || !scene?.slug || isSessionNotFound) {
+      setRedirectCountdown(3);
+      hasRedirectedAfterFinishRef.current = false;
+      return;
+    }
+
+    let remainingSeconds = 3;
+    setRedirectCountdown(remainingSeconds);
+
+    const intervalId = window.setInterval(() => {
+      remainingSeconds -= 1;
+      setRedirectCountdown(Math.max(0, remainingSeconds));
+
+      if (remainingSeconds > 0 || hasRedirectedAfterFinishRef.current) {
+        return;
+      }
+
+      hasRedirectedAfterFinishRef.current = true;
+      window.clearInterval(intervalId);
+      void navigate({
+        to: "/leaderboard",
+        search: {
+          scene: scene.slug,
+          page: 1,
+          pageSize: 10,
+        },
+      });
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isGameFinished, scene?.slug, isSessionNotFound, navigate]);
+
+  useEffect(() => {
     if (!menuState) {
       return;
     }
 
-    const handleOutsidePointer = (event: MouseEvent) => {
+    const handleOutsidePointer = (event: globalThis.MouseEvent) => {
       if (menuRef.current?.contains(event.target as Node)) {
         return;
       }
@@ -228,12 +266,10 @@ function PlaySessionRoute() {
       }
     };
 
-    // @ts-expect-error
     window.addEventListener("mousedown", handleOutsidePointer);
     window.addEventListener("keydown", handleEscape);
 
     return () => {
-      // @ts-expect-error
       window.removeEventListener("mousedown", handleOutsidePointer);
       window.removeEventListener("keydown", handleEscape);
     };
@@ -253,7 +289,7 @@ function PlaySessionRoute() {
     };
   }, [sessionData?.status]);
 
-  const computeClickAttempt = (event: MouseEvent<HTMLButtonElement>): ClickAttempt | null => {
+  const computeClickAttempt = (event: ReactMouseEvent<HTMLButtonElement>): ClickAttempt | null => {
     if (!scene) {
       return null;
     }
@@ -299,7 +335,7 @@ function PlaySessionRoute() {
     };
   };
 
-  const handleSceneClick = (event: MouseEvent<HTMLButtonElement>) => {
+  const handleSceneClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
     if (!scene || isSessionNotFound || isGameFinished || guessMutation.isPending) {
       return;
     }
@@ -356,7 +392,7 @@ function PlaySessionRoute() {
         >
           <h2 className="text-sm font-semibold uppercase tracking-wide">Find These Characters</h2>
           <ul className="mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
-            {!isSessionNotFound && sessionQuery.isPending ? (
+            {isSessionNotFound ? null : sessionQuery.isPending ? (
               <li className="text-muted-foreground text-sm">Loading scene targets...</li>
             ) : sceneCharactersWithAssets.length ? (
               sceneCharactersWithAssets.map((character) => {
@@ -445,6 +481,9 @@ function PlaySessionRoute() {
                   </p>
                   <p className="text-muted-foreground text-sm">
                     Attempts: <span className="font-mono">{sessionData?.attempts ?? 0}</span>
+                  </p>
+                  <p className="text-muted-foreground mt-2 text-xs">
+                    Redirecting to leaderboard in {redirectCountdown}s...
                   </p>
                 </div>
               </div>
