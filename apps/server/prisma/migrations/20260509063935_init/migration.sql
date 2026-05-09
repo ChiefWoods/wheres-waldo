@@ -31,7 +31,6 @@ CREATE TABLE "Session" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "scene_id" INTEGER NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'STARTED',
-    "end_reason" TEXT,
     "started_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "ended_at" DATETIME,
     "elapsed_ms" INTEGER,

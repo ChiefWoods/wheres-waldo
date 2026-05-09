@@ -239,7 +239,6 @@ const sessionRouter = router({
               status: "FINISHED",
               ended_at: endedAt,
               elapsed_ms: endedAt.getTime() - session.started_at.getTime(),
-              end_reason: "all_found",
               last_activity_at: endedAt,
             },
           });

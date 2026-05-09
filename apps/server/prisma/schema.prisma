@@ -53,7 +53,6 @@ model Session {
   id               String         @id @default(cuid())
   scene_id         Int
   status           SessionStatus  @default(STARTED)
-  end_reason       String?
   started_at       DateTime       @default(now())
   ended_at         DateTime?
   elapsed_ms       Int?
