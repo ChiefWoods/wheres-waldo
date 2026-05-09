@@ -8,6 +8,64 @@ import { publicProcedure, router } from "../trpc.ts";
 const normalizedCoordinate = z.number().finite().min(0).max(1);
 
 const sessionRouter = router({
+  get: publicProcedure
+    .input(
+      z.object({
+        sessionId: z.string().min(1),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const session = await ctx.prisma.session.findUnique({
+        where: { id: input.sessionId },
+        select: {
+          id: true,
+          status: true,
+          scene: {
+            select: {
+              id: true,
+              slug: true,
+              name: true,
+              width: true,
+              height: true,
+              sceneCharacters: {
+                select: {
+                  character: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+                orderBy: { id: "asc" },
+              },
+            },
+          },
+        },
+      });
+
+      if (!session) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Session not found",
+        });
+      }
+
+      return {
+        sessionId: session.id,
+        status: session.status,
+        scene: {
+          id: session.scene.id,
+          slug: session.scene.slug,
+          name: session.scene.name,
+          width: session.scene.width,
+          height: session.scene.height,
+          characters: session.scene.sceneCharacters.map(
+            (entry: (typeof session.scene.sceneCharacters)[number]) => entry.character,
+          ),
+        },
+      };
+    }),
+
   start: publicProcedure
     .input(z.object({ sceneId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
