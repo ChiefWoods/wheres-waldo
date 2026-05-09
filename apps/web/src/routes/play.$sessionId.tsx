@@ -1,12 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { characters } from "@/lib/characters";
 import { sessionQueryOptions } from "@/lib/query-options";
 import { scenes } from "@/lib/scenes";
-import { endSession, endSessionOnPageExit } from "@/lib/trpc-client";
-import { isNotFoundTrpcError } from "@/lib/trpc-errors";
+import { endSession, endSessionOnPageExit, submitGuess } from "@/lib/trpc-client";
+import { getErrorMessage, isNotFoundTrpcError } from "@/lib/trpc-errors";
 
 const pendingSessionTerminationTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const UNMOUNT_TERMINATION_DELAY_MS = 150;
@@ -18,25 +19,58 @@ type ClickAttempt = {
   normalizedY: number;
 };
 
+type MenuState = ClickAttempt & {
+  sceneX: number;
+  sceneY: number;
+};
+
 export const Route = createFileRoute("/play/$sessionId")({
   component: PlaySessionRoute,
 });
 
+function formatElapsedMs(elapsedMs: number): string {
+  const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 function PlaySessionRoute() {
   const { sessionId } = Route.useParams();
+  const queryClient = useQueryClient();
   const hasTerminatedSessionRef = useRef(false);
   const rightColumnRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const [naturalDimensions, setNaturalDimensions] = useState<{
     width: number;
     height: number;
   } | null>(null);
   const [lastAttempt, setLastAttempt] = useState<ClickAttempt | null>(null);
+  const [menuState, setMenuState] = useState<MenuState | null>(null);
   const [asideMaxHeight, setAsideMaxHeight] = useState<number | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const isDev = import.meta.env.DEV;
+
   const sessionQuery = useQuery(sessionQueryOptions(sessionId));
   const isSessionNotFound = sessionQuery.isError && isNotFoundTrpcError(sessionQuery.error);
+  const sessionData = sessionQuery.data;
+  const scene = sessionData?.scene;
 
-  const scene = sessionQuery.data?.scene;
+  const foundCharacterIds = useMemo(() => {
+    if (!scene) {
+      return new Set<number>();
+    }
+
+    return new Set(
+      scene.characters.filter((character) => character.found).map((character) => character.id),
+    );
+  }, [scene]);
+
+  const totalTargets = sessionData?.totalTargets ?? scene?.characters.length ?? 0;
+  const foundCount = sessionData?.foundCount ?? foundCharacterIds.size;
+  const isGameFinished =
+    sessionData?.status === "FINISHED" || (totalTargets > 0 && foundCount >= totalTargets);
+
   const sceneAsset = useMemo(() => {
     if (!scene) {
       return undefined;
@@ -58,6 +92,54 @@ function PlaySessionRoute() {
       };
     });
   }, [scene]);
+
+  const guessMutation = useMutation({
+    mutationFn: submitGuess,
+    onSuccess: (result, variables) => {
+      queryClient.setQueryData(sessionQueryOptions(sessionId).queryKey, (previousData) => {
+        if (!previousData) {
+          return previousData;
+        }
+
+        return {
+          ...previousData,
+          status: result.status,
+          attempts: result.attempts,
+          elapsedMs: result.elapsedMs ?? previousData.elapsedMs,
+          foundCount: result.foundCount,
+          totalTargets: result.totalTargets,
+          scene: {
+            ...previousData.scene,
+            characters: previousData.scene.characters.map((character) => {
+              if (character.id !== variables.characterId) {
+                return character;
+              }
+
+              return result.isCorrect ? { ...character, found: true } : character;
+            }),
+          },
+        };
+      });
+
+      if (result.isCorrect) {
+        toast.success(
+          `Character is found! ${Math.max(0, result.totalTargets - result.foundCount)} more to go`,
+        );
+      } else {
+        toast.error("No correct character found here...");
+      }
+    },
+    onError: (error) => {
+      setMenuState(null);
+
+      if (isNotFoundTrpcError(error)) {
+        toast.error("Session not found.");
+        return;
+      }
+
+      toast.error(getErrorMessage(error) ?? "Failed to submit guess. Please try again.");
+    },
+  });
 
   useEffect(() => {
     const pendingTerminationTimer = pendingSessionTerminationTimers.get(sessionId);
@@ -121,20 +203,70 @@ function PlaySessionRoute() {
     };
   }, []);
 
-  const handleSceneClick = (event: MouseEvent<HTMLButtonElement>) => {
-    if (!scene) {
+  useEffect(() => {
+    if (isSessionNotFound || isGameFinished) {
+      setMenuState(null);
+    }
+  }, [isSessionNotFound, isGameFinished]);
+
+  useEffect(() => {
+    if (!menuState) {
       return;
+    }
+
+    const handleOutsidePointer = (event: MouseEvent) => {
+      if (menuRef.current?.contains(event.target as Node)) {
+        return;
+      }
+
+      setMenuState(null);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuState(null);
+      }
+    };
+
+    // @ts-expect-error
+    window.addEventListener("mousedown", handleOutsidePointer);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      // @ts-expect-error
+      window.removeEventListener("mousedown", handleOutsidePointer);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [menuState]);
+
+  useEffect(() => {
+    if (sessionData?.status !== "STARTED") {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [sessionData?.status]);
+
+  const computeClickAttempt = (event: MouseEvent<HTMLButtonElement>): ClickAttempt | null => {
+    if (!scene) {
+      return null;
     }
 
     const sourceWidth = scene.width ?? naturalDimensions?.width;
     const sourceHeight = scene.height ?? naturalDimensions?.height;
     if (!sourceWidth || !sourceHeight || sourceWidth <= 0 || sourceHeight <= 0) {
-      return;
+      return null;
     }
 
     const rect = event.currentTarget.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) {
-      return;
+      return null;
     }
 
     const scale = Math.min(rect.width / sourceWidth, rect.height / sourceHeight);
@@ -151,7 +283,7 @@ function PlaySessionRoute() {
       clickXFromAnchor > renderedWidth ||
       clickYFromAnchor > renderedHeight
     ) {
-      return;
+      return null;
     }
 
     const actualX = clickXFromAnchor * (sourceWidth / renderedWidth);
@@ -159,13 +291,54 @@ function PlaySessionRoute() {
     const normalizedX = actualX / sourceWidth;
     const normalizedY = actualY / sourceHeight;
 
-    setLastAttempt({
+    return {
       actualX,
       actualY,
       normalizedX,
       normalizedY,
+    };
+  };
+
+  const handleSceneClick = (event: MouseEvent<HTMLButtonElement>) => {
+    if (!scene || isSessionNotFound || isGameFinished || guessMutation.isPending) {
+      return;
+    }
+
+    const clickAttempt = computeClickAttempt(event);
+    if (!clickAttempt) {
+      setMenuState(null);
+      return;
+    }
+
+    setLastAttempt(clickAttempt);
+    setMenuState({
+      ...clickAttempt,
+      sceneX: event.clientX - event.currentTarget.getBoundingClientRect().left,
+      sceneY: event.clientY - event.currentTarget.getBoundingClientRect().top,
     });
   };
+
+  const handleCharacterSelection = (characterId: number) => {
+    if (!menuState || guessMutation.isPending) {
+      return;
+    }
+
+    setMenuState(null);
+    guessMutation.mutate({
+      sessionId,
+      characterId,
+      xNorm: menuState.normalizedX,
+      yNorm: menuState.normalizedY,
+    });
+  };
+
+  const elapsedMs =
+    sessionData?.status === "FINISHED"
+      ? (sessionData.elapsedMs ??
+        (sessionData.endedAt ? sessionData.endedAt.getTime() - sessionData.startedAt.getTime() : 0))
+      : sessionData?.startedAt
+        ? nowMs - sessionData.startedAt.getTime()
+        : 0;
 
   return (
     <section className="relative left-1/2 w-[min(1600px,calc(100vw-1.5rem))] -translate-x-1/2 space-y-4">
@@ -186,22 +359,33 @@ function PlaySessionRoute() {
             {!isSessionNotFound && sessionQuery.isPending ? (
               <li className="text-muted-foreground text-sm">Loading scene targets...</li>
             ) : sceneCharactersWithAssets.length ? (
-              sceneCharactersWithAssets.map((character) => (
-                <li key={character.id} className="bg-muted/30 rounded-md border p-2">
-                  {character.imageUrl ? (
-                    <img
-                      src={character.imageUrl}
-                      alt={character.name}
-                      className="bg-muted aspect-square w-full rounded-md border object-contain p-1"
-                    />
-                  ) : (
-                    <div className="bg-muted text-muted-foreground grid aspect-square w-full place-items-center rounded-md border text-[10px]">
-                      N/A
-                    </div>
-                  )}
-                  <p className="mt-2 text-center text-sm font-medium">{character.name}</p>
-                </li>
-              ))
+              sceneCharactersWithAssets.map((character) => {
+                const isFound = foundCharacterIds.has(character.id);
+
+                return (
+                  <li
+                    key={character.id}
+                    className={`rounded-md border p-2 ${isFound ? "border-green-500/50 bg-green-500/10" : "bg-muted/30"}`}
+                  >
+                    {character.imageUrl ? (
+                      <img
+                        src={character.imageUrl}
+                        alt={character.name}
+                        className="bg-muted aspect-square w-full rounded-md border object-contain p-1"
+                      />
+                    ) : (
+                      <div className="bg-muted text-muted-foreground grid aspect-square w-full place-items-center rounded-md border text-[10px]">
+                        N/A
+                      </div>
+                    )}
+                    <p
+                      className={`mt-2 text-center text-sm font-medium ${isFound ? "text-green-500" : ""}`}
+                    >
+                      {character.name}
+                    </p>
+                  </li>
+                );
+              })
             ) : (
               <li className="text-muted-foreground text-sm">
                 No characters configured for this scene.
@@ -211,43 +395,103 @@ function PlaySessionRoute() {
         </aside>
 
         <div ref={rightColumnRef} className="space-y-3">
-          <button
-            type="button"
-            onClick={handleSceneClick}
-            className="bg-muted relative block h-[clamp(380px,68vh,860px)] w-full min-w-0 overflow-hidden rounded-lg border text-left"
-            disabled={!sceneAsset || sessionQuery.isPending || isSessionNotFound}
-          >
-            {isSessionNotFound ? (
-              <div className="text-muted-foreground flex h-full items-center justify-center text-base font-medium">
-                Session not found
-              </div>
-            ) : sceneAsset ? (
-              <img
-                src={sceneAsset.imageUrl}
-                alt={scene?.name ?? sceneAsset.name}
-                className="h-full w-full object-contain"
-                onLoad={(event) => {
-                  setNaturalDimensions({
-                    width: event.currentTarget.naturalWidth,
-                    height: event.currentTarget.naturalHeight,
-                  });
-                }}
-              />
-            ) : (
-              <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-                Scene asset not found.
+          <div className="bg-card text-card-foreground border-border flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+            <span>
+              Elapsed: <span className="font-mono">{formatElapsedMs(elapsedMs)}</span>
+            </span>
+            <span>
+              Attempts: <span className="font-mono">{sessionData?.attempts ?? 0}</span>
+            </span>
+          </div>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={handleSceneClick}
+              className="bg-muted relative block h-[clamp(380px,68vh,860px)] w-full min-w-0 overflow-hidden rounded-lg border text-left"
+              disabled={
+                !sceneAsset || sessionQuery.isPending || isSessionNotFound || isGameFinished
+              }
+            >
+              {isSessionNotFound ? (
+                <div className="text-muted-foreground flex h-full items-center justify-center text-base font-medium">
+                  Session not found
+                </div>
+              ) : sceneAsset ? (
+                <img
+                  src={sceneAsset.imageUrl}
+                  alt={scene?.name ?? sceneAsset.name}
+                  className={`h-full w-full object-contain ${isGameFinished ? "opacity-35" : ""}`}
+                  onLoad={(event) => {
+                    setNaturalDimensions({
+                      width: event.currentTarget.naturalWidth,
+                      height: event.currentTarget.naturalHeight,
+                    });
+                  }}
+                />
+              ) : (
+                <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+                  Scene asset not found.
+                </div>
+              )}
+            </button>
+
+            {isGameFinished && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/55 p-4 text-center">
+                <div className="bg-card text-card-foreground border-border w-full max-w-sm rounded-lg border p-4">
+                  <p className="text-lg font-semibold">All characters found!</p>
+                  <p className="text-muted-foreground mt-2 text-sm">
+                    Time spent: <span className="font-mono">{formatElapsedMs(elapsedMs)}</span>
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    Attempts: <span className="font-mono">{sessionData?.attempts ?? 0}</span>
+                  </p>
+                </div>
               </div>
             )}
-          </button>
 
-          {sessionQuery.isError && !isSessionNotFound ? (
+            {menuState && sceneCharactersWithAssets.length > 0 && (
+              <div
+                ref={menuRef}
+                className="bg-popover text-popover-foreground border-border absolute z-20 min-w-44 rounded-md border p-1 shadow-md ring-1 ring-foreground/10"
+                style={{
+                  left: `${menuState.sceneX}px`,
+                  top: `${menuState.sceneY + 8}px`,
+                  transform: "translateX(-50%)",
+                }}
+              >
+                <p className="text-muted-foreground px-2 py-1 text-xs font-medium">
+                  Select character
+                </p>
+                {sceneCharactersWithAssets.map((character) => {
+                  const isFound = foundCharacterIds.has(character.id);
+
+                  return (
+                    <button
+                      key={character.id}
+                      type="button"
+                      className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => handleCharacterSelection(character.id)}
+                      disabled={isFound || guessMutation.isPending}
+                    >
+                      <span className={isFound ? "text-green-500" : ""}>{character.name}</span>
+                      {isFound && <span className="ml-auto text-xs text-green-500">Found</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {sessionQuery.isError && !isSessionNotFound && (
             <p className="text-destructive text-sm">Failed to load session details.</p>
-          ) : null}
+          )}
 
           <p className="text-muted-foreground text-sm">
-            Click the scene to register an attempt coordinate.
+            Click the scene to select a character at that point.
           </p>
 
+          {/* DEV-ONLY: remove this panel before committing production gameplay UI. */}
           {isDev && (
             <div className="rounded-md border border-dashed p-3">
               <p className="text-xs font-semibold tracking-wide">Dev Click Coordinates</p>
