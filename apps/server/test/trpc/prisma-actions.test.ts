@@ -5,6 +5,11 @@ import type { Context } from "../../src/trpc/context.ts";
 import type { appRouter as AppRouterInstance } from "../../src/trpc/routers/app.ts";
 
 import { DEFAULT_TOLERANCE_NORM } from "../../src/lib/game-config.ts";
+import {
+  isStaleSessionCleanupSchedulerRunning,
+  runStaleSessionCleanupCycle,
+  stopStaleSessionCleanupScheduler,
+} from "../../src/lib/stale-session-cleanup.ts";
 
 const testDbUrl = "file:./data/test.db";
 
@@ -143,6 +148,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  stopStaleSessionCleanupScheduler();
   await prisma.$disconnect();
   await Bun.write(dbPath, cleanDbSnapshot);
 
@@ -364,4 +370,97 @@ test("session.best filters and sorts leaderboard rows, with pagination", async (
 
   expect(secondPage.total).toBe(3);
   expect(secondPage.rows.map((row) => row.sessionId)).toEqual(["best-medium-high-attempts"]);
+});
+
+test("stale session cleanup removes only started sessions inactive for over one hour", async () => {
+  const sceneId = seedData.activeSceneId;
+  const now = new Date("2026-05-09T12:00:00.000Z");
+  const staleActivityAt = new Date(now.getTime() - 61 * 60 * 1000);
+  const freshActivityAt = new Date(now.getTime() - 15 * 60 * 1000);
+
+  await prisma.session.createMany({
+    data: [
+      {
+        id: "stale-started",
+        scene_id: sceneId,
+        status: "STARTED",
+        started_at: staleActivityAt,
+        last_activity_at: staleActivityAt,
+      },
+      {
+        id: "fresh-started",
+        scene_id: sceneId,
+        status: "STARTED",
+        started_at: freshActivityAt,
+        last_activity_at: freshActivityAt,
+      },
+      {
+        id: "stale-finished",
+        scene_id: sceneId,
+        status: "FINISHED",
+        started_at: staleActivityAt,
+        ended_at: now,
+        elapsed_ms: 123,
+        attempts: 1,
+        last_activity_at: staleActivityAt,
+      },
+    ],
+  });
+
+  const waldoSceneCharacter = await prisma.sceneCharacter.findUnique({
+    where: {
+      scene_id_character_id: {
+        scene_id: sceneId,
+        character_id: seedData.waldoId,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  expect(waldoSceneCharacter).toBeTruthy();
+
+  await prisma.discovery.create({
+    data: {
+      session_id: "stale-started",
+      scene_character_id: waldoSceneCharacter!.id,
+      click_x_norm: 0.5,
+      click_y_norm: 0.5,
+    },
+  });
+
+  const cleanupResult = await runStaleSessionCleanupCycle(prisma, { now });
+
+  expect(cleanupResult).toEqual({
+    deletedCount: 1,
+    activeSessionCount: 1,
+    stopScheduler: false,
+  });
+
+  const [staleSession, freshSession, finishedSession, staleDiscoveriesCount] = await Promise.all([
+    prisma.session.findUnique({ where: { id: "stale-started" } }),
+    prisma.session.findUnique({ where: { id: "fresh-started" } }),
+    prisma.session.findUnique({ where: { id: "stale-finished" } }),
+    prisma.discovery.count({
+      where: {
+        session_id: "stale-started",
+      },
+    }),
+  ]);
+
+  expect(staleSession).toBeNull();
+  expect(freshSession).toBeTruthy();
+  expect(finishedSession).toBeTruthy();
+  expect(staleDiscoveriesCount).toBe(0);
+});
+
+test("session.start re-enables the stale session cleanup scheduler when stopped", async () => {
+  stopStaleSessionCleanupScheduler();
+  expect(isStaleSessionCleanupSchedulerRunning()).toBe(false);
+
+  const started = await createCaller().session.start({ sceneId: seedData.activeSceneId });
+
+  expect(started.status).toBe("STARTED");
+  expect(isStaleSessionCleanupSchedulerRunning()).toBe(true);
 });

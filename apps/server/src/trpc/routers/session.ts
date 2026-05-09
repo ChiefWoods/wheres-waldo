@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { Prisma } from "../../../generated/prisma/client";
+import { ensureStaleSessionCleanupSchedulerRunning } from "../../lib/stale-session-cleanup.ts";
 import { publicProcedure, router } from "../trpc.ts";
 
 const normalizedCoordinate = z.number().finite().min(0).max(1);
@@ -37,6 +38,8 @@ const sessionRouter = router({
           started_at: true,
         },
       });
+
+      ensureStaleSessionCleanupSchedulerRunning(ctx.prisma, ctx.req.log);
 
       return {
         sessionId: session.id,
