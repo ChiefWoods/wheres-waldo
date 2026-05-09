@@ -11,3 +11,73 @@ generator client {
 datasource db {
   provider = "sqlite"
 }
+
+enum SessionStatus {
+  STARTED
+  FINISHED
+}
+
+model Scene {
+  id              Int               @id @default(autoincrement())
+  slug            String            @unique
+  name            String
+  width           Int?
+  height          Int?
+  is_active       Boolean           @default(true)
+  sessions        Session[]
+  sceneCharacters SceneCharacter[]
+}
+
+model Character {
+  id              Int               @id @default(autoincrement())
+  name            String            @unique
+  sceneCharacters SceneCharacter[]
+}
+
+model SceneCharacter {
+  id              Int               @id @default(autoincrement())
+  scene_id        Int
+  character_id    Int
+  target_x_norm   Float
+  target_y_norm   Float
+  tolerance_norm  Float             @default(0.02)
+  scene           Scene             @relation(fields: [scene_id], references: [id], onDelete: Cascade)
+  character       Character         @relation(fields: [character_id], references: [id], onDelete: Cascade)
+  discoveries     Discovery[]
+
+  @@unique([scene_id, character_id])
+  @@index([scene_id])
+}
+
+model Session {
+  id               String         @id @default(cuid())
+  scene_id         Int
+  status           SessionStatus  @default(STARTED)
+  end_reason       String?
+  started_at       DateTime       @default(now())
+  ended_at         DateTime?
+  elapsed_ms       Int?
+  attempts         Int            @default(0)
+  last_activity_at DateTime       @default(now())
+  scene            Scene          @relation(fields: [scene_id], references: [id], onDelete: Cascade)
+  discoveries      Discovery[]
+
+  @@index([scene_id, status, ended_at])
+  @@index([status, last_activity_at])
+  @@index([scene_id, elapsed_ms, attempts])
+}
+
+model Discovery {
+  id                Int            @id @default(autoincrement())
+  session_id        String
+  scene_character_id Int
+  found_at          DateTime       @default(now())
+  click_x_norm      Float
+  click_y_norm      Float
+  session           Session        @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  sceneCharacter    SceneCharacter @relation(fields: [scene_character_id], references: [id], onDelete: Cascade)
+
+  @@unique([session_id, scene_character_id])
+  @@index([session_id])
+  @@index([scene_character_id])
+}
