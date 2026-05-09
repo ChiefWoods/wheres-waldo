@@ -41,6 +41,11 @@ const DEFAULT_PAGE = 1;
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 const DEFAULT_PAGE_SIZE = PAGE_SIZE_OPTIONS[0];
 const SKELETON_ROW_COUNT = 5;
+const RANK_TROPHY_BY_POSITION: Record<number, string> = {
+  1: "/assets/trophy/gold.svg",
+  2: "/assets/trophy/silver.svg",
+  3: "/assets/trophy/bronze.svg",
+};
 
 const columnHelper = createColumnHelper<LeaderboardRow>();
 
@@ -90,7 +95,17 @@ const leaderboardColumns = [
     header: "Rank",
     cell: (info) => {
       const { pageIndex, pageSize } = info.table.getState().pagination;
-      return pageIndex * pageSize + info.row.index + 1;
+      const rank = pageIndex * pageSize + info.row.index + 1;
+      const trophyIcon = RANK_TROPHY_BY_POSITION[rank];
+
+      return (
+        <div className="flex items-center gap-2">
+          <span>{rank}</span>
+          {trophyIcon && (
+            <img src={trophyIcon} alt="trophy" aria-hidden className="size-4 shrink-0" />
+          )}
+        </div>
+      );
     },
   }),
   columnHelper.accessor("elapsedMs", {
