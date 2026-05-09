@@ -35,6 +35,8 @@ const sessionRouter = router({
               sceneCharacters: {
                 select: {
                   id: true,
+                  target_x_norm: true,
+                  target_y_norm: true,
                   character: {
                     select: {
                       id: true,
@@ -81,6 +83,8 @@ const sessionRouter = router({
             (entry: (typeof session.scene.sceneCharacters)[number]) => ({
               id: entry.character.id,
               name: entry.character.name,
+              targetXNorm: entry.target_x_norm,
+              targetYNorm: entry.target_y_norm,
               found: entry.discoveries.length > 0,
             }),
           ),
