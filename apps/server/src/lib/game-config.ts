@@ -1,0 +1,1 @@
+export const DEFAULT_TOLERANCE_NORM = 0.02;
