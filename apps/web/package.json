@@ -25,6 +25,7 @@
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "lint-staged": "^17.0.3",
     "oxfmt": "^0.48.0",
     "oxlint": "^1.63.0",
     "typescript": "^5.9.3",
