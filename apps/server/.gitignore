@@ -63,3 +63,12 @@ test/types/index.js
 
 # compiled app
 dist
+
+/generated/prisma
+
+# env
+.env*
+!.env.example
+
+# database
+data/**/*.db
