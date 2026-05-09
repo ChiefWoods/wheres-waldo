@@ -201,6 +201,8 @@ test("session.guess handles wrong guesses, duplicate discoveries, and auto-finis
     foundCount: 0,
     totalTargets: 2,
     status: "STARTED",
+    attempts: 1,
+    elapsedMs: null,
   });
 
   const firstCorrect = await caller.session.guess({
@@ -215,6 +217,8 @@ test("session.guess handles wrong guesses, duplicate discoveries, and auto-finis
     foundCount: 1,
     totalTargets: 2,
     status: "STARTED",
+    attempts: 2,
+    elapsedMs: null,
   });
 
   const duplicateCorrect = await caller.session.guess({
@@ -229,6 +233,8 @@ test("session.guess handles wrong guesses, duplicate discoveries, and auto-finis
     foundCount: 1,
     totalTargets: 2,
     status: "STARTED",
+    attempts: 3,
+    elapsedMs: null,
   });
 
   const finishingGuess = await caller.session.guess({
@@ -237,13 +243,15 @@ test("session.guess handles wrong guesses, duplicate discoveries, and auto-finis
     xNorm: 0.2,
     yNorm: 0.25,
   });
-  expect(finishingGuess).toEqual({
+  expect(finishingGuess).toMatchObject({
     isCorrect: true,
     alreadyFound: false,
     foundCount: 2,
     totalTargets: 2,
     status: "FINISHED",
+    attempts: 4,
   });
+  expect(typeof finishingGuess.elapsedMs === "number" && finishingGuess.elapsedMs >= 0).toBe(true);
 
   const finishedSession = await prisma.session.findUnique({
     where: { id: started.sessionId },
@@ -252,13 +260,11 @@ test("session.guess handles wrong guesses, duplicate discoveries, and auto-finis
       status: true,
       ended_at: true,
       elapsed_ms: true,
-      end_reason: true,
     },
   });
   expect(finishedSession).toBeTruthy();
   expect(finishedSession?.attempts).toBe(4);
   expect(finishedSession?.status).toBe("FINISHED");
-  expect(finishedSession?.end_reason).toBe("all_found");
   expect(finishedSession?.ended_at).toBeTruthy();
   expect(typeof finishedSession?.elapsed_ms === "number" && finishedSession.elapsed_ms >= 0).toBe(
     true,

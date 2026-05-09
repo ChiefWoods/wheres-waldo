@@ -21,6 +21,10 @@ const sessionRouter = router({
         select: {
           id: true,
           status: true,
+          attempts: true,
+          started_at: true,
+          ended_at: true,
+          elapsed_ms: true,
           scene: {
             select: {
               id: true,
@@ -30,11 +34,17 @@ const sessionRouter = router({
               height: true,
               sceneCharacters: {
                 select: {
+                  id: true,
                   character: {
                     select: {
                       id: true,
                       name: true,
                     },
+                  },
+                  discoveries: {
+                    where: { session_id: input.sessionId },
+                    select: { id: true },
+                    take: 1,
                   },
                 },
                 orderBy: { id: "asc" },
@@ -54,6 +64,13 @@ const sessionRouter = router({
       return {
         sessionId: session.id,
         status: session.status,
+        attempts: session.attempts,
+        startedAt: session.started_at,
+        endedAt: session.ended_at,
+        elapsedMs: session.elapsed_ms,
+        foundCount: session.scene.sceneCharacters.filter((entry) => entry.discoveries.length > 0)
+          .length,
+        totalTargets: session.scene.sceneCharacters.length,
         scene: {
           id: session.scene.id,
           slug: session.scene.slug,
@@ -61,7 +78,11 @@ const sessionRouter = router({
           width: session.scene.width,
           height: session.scene.height,
           characters: session.scene.sceneCharacters.map(
-            (entry: (typeof session.scene.sceneCharacters)[number]) => entry.character,
+            (entry: (typeof session.scene.sceneCharacters)[number]) => ({
+              id: entry.character.id,
+              name: entry.character.name,
+              found: entry.discoveries.length > 0,
+            }),
           ),
         },
       };
@@ -145,13 +166,16 @@ const sessionRouter = router({
 
         const now = new Date();
 
-        await tx.session.update({
+        const updatedSession = await tx.session.update({
           where: { id: session.id },
           data: {
             attempts: {
               increment: 1,
             },
             last_activity_at: now,
+          },
+          select: {
+            attempts: true,
           },
         });
 
@@ -197,6 +221,8 @@ const sessionRouter = router({
             foundCount,
             totalTargets,
             status: "STARTED" as const,
+            attempts: updatedSession.attempts,
+            elapsedMs: null as number | null,
           };
         }
 
@@ -229,16 +255,18 @@ const sessionRouter = router({
         ]);
 
         let status: "STARTED" | "FINISHED" = "STARTED";
+        let elapsedMs: number | null = null;
 
         if (foundCount === totalTargets && totalTargets > 0) {
           const endedAt = new Date();
+          elapsedMs = endedAt.getTime() - session.started_at.getTime();
 
           await tx.session.update({
             where: { id: session.id },
             data: {
               status: "FINISHED",
               ended_at: endedAt,
-              elapsed_ms: endedAt.getTime() - session.started_at.getTime(),
+              elapsed_ms: elapsedMs,
               last_activity_at: endedAt,
             },
           });
@@ -252,6 +280,8 @@ const sessionRouter = router({
           foundCount,
           totalTargets,
           status,
+          attempts: updatedSession.attempts,
+          elapsedMs,
         };
       });
     }),
