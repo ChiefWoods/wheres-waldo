@@ -8,7 +8,7 @@
     "target": "ES2023",
     "strict": true,
     "esModuleInterop": true,
-    "types": ["node", "bun-types"],
+    "types": ["node", "bun-types", "bun"],
     "ignoreDeprecations": "6.0",
     "allowImportingTsExtensions": true,
     "noEmit": true,
