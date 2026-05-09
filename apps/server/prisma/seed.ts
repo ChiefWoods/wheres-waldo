@@ -1,12 +1,14 @@
 import "dotenv/config";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
 import { basename, extname, resolve } from "node:path";
+import Papa from "papaparse";
 
 import { PrismaClient } from "../generated/prisma/client";
 import { DEFAULT_TOLERANCE_NORM } from "../src/lib/game-config.ts";
 
 const IMAGE_SCENES_DIR = resolve(import.meta.dir, "../../web/assets/scenes");
 const IMAGE_CHARACTERS_DIR = resolve(import.meta.dir, "../../web/assets/characters");
+const SCENE_CHARACTERS_DIR = resolve(import.meta.dir, "../scene_characters");
 
 const SOF_MARKERS = new Set([
   0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf,
@@ -19,6 +21,18 @@ type SceneSeedInput = {
   height: number;
 };
 
+type CsvSceneCharacterRow = {
+  character: string;
+  x_from_left_norm: number;
+  y_from_top_norm: number;
+};
+
+type SceneCharacterSeedInput = {
+  characterName: string;
+  xNorm: number;
+  yNorm: number;
+};
+
 const toTitle = (value: string): string => {
   return value
     .split(/[_\s-]+/)
@@ -27,30 +41,27 @@ const toTitle = (value: string): string => {
     .join(" ");
 };
 
-const hashText = (text: string): number => {
-  // Bun.hash is implemented natively and may return number or bigint depending on platform/runtime.
-  // Normalize to uint32 to preserve the previous output format.
-  const rawHash = Bun.hash(text);
-  if (typeof rawHash === "bigint") {
-    return Number(rawHash & 0xffffffffn);
-  }
-
-  return rawHash >>> 0;
-};
-
 const roundTo4 = (value: number): number => {
   return Math.round(value * 10000) / 10000;
 };
 
-const placeholderCoordinates = (sceneSlug: string, characterName: string) => {
-  const key = `${sceneSlug}:${characterName}`;
-  const xHash = hashText(`${key}:x`);
-  const yHash = hashText(`${key}:y`);
+const toSceneSlugFromCsvFile = (fileName: string): string => {
+  return basename(fileName, extname(fileName));
+};
 
-  const xNorm = roundTo4(0.08 + (xHash / 0xffffffff) * 0.84);
-  const yNorm = roundTo4(0.08 + (yHash / 0xffffffff) * 0.84);
+const toNormValue = (
+  value: number,
+  label: string,
+  sceneSlug: string,
+  characterName: string,
+): number => {
+  if (!Number.isFinite(value) || value < 0 || value > 1) {
+    throw new Error(
+      `Invalid ${label}=${value} for ${characterName} in scene ${sceneSlug}. Expected a value in [0, 1].`,
+    );
+  }
 
-  return { xNorm, yNorm };
+  return value;
 };
 
 const parseJpegDimensions = (bytes: Uint8Array): { width: number; height: number } => {
@@ -150,9 +161,74 @@ const collectCharacters = async (): Promise<string[]> => {
   return characterFiles.map((fileName) => toTitle(basename(fileName, extname(fileName))));
 };
 
+const collectSceneCharacterCoordinates = async (): Promise<
+  Map<string, Map<string, SceneCharacterSeedInput>>
+> => {
+  const csvFiles = (await Array.fromAsync(new Bun.Glob("*.csv").scan(SCENE_CHARACTERS_DIR))).sort();
+
+  if (csvFiles.length === 0) {
+    throw new Error(`No scene character CSV files found in ${SCENE_CHARACTERS_DIR}`);
+  }
+
+  const sceneCharacterCoordinatesBySceneSlug = new Map<
+    string,
+    Map<string, SceneCharacterSeedInput>
+  >();
+
+  for (const fileName of csvFiles) {
+    const sceneSlug = toSceneSlugFromCsvFile(fileName);
+    const filePath = resolve(SCENE_CHARACTERS_DIR, fileName);
+    const csvContent = await Bun.file(filePath).text();
+    const parseResult = Papa.parse<CsvSceneCharacterRow>(csvContent, {
+      header: true,
+      skipEmptyLines: "greedy",
+      dynamicTyping: true,
+      transformHeader: (header) => header.trim().toLowerCase(),
+    });
+
+    if (parseResult.errors.length > 0) {
+      const firstError = parseResult.errors[0];
+      throw new Error(`Failed to parse ${fileName}: ${firstError.message}`);
+    }
+
+    const sceneCharacters = new Map<string, SceneCharacterSeedInput>();
+
+    for (const row of parseResult.data) {
+      const characterName = toTitle(String(row.character ?? ""));
+      const xFromLeft = Number(row.x_from_left_norm);
+      const yFromTop = Number(row.y_from_top_norm);
+
+      if (!characterName) {
+        throw new Error(`Missing character name in ${fileName}`);
+      }
+
+      const xFromLeftNorm = toNormValue(xFromLeft, "x_from_left_norm", sceneSlug, characterName);
+      const yFromTopNorm = toNormValue(yFromTop, "y_from_top_norm", sceneSlug, characterName);
+
+      const xNorm = roundTo4(xFromLeftNorm);
+      const yNorm = roundTo4(yFromTopNorm);
+
+      sceneCharacters.set(characterName, {
+        characterName,
+        xNorm,
+        yNorm,
+      });
+    }
+
+    if (sceneCharacters.size === 0) {
+      throw new Error(`No scene character rows found in ${fileName}`);
+    }
+
+    sceneCharacterCoordinatesBySceneSlug.set(sceneSlug, sceneCharacters);
+  }
+
+  return sceneCharacterCoordinatesBySceneSlug;
+};
+
 const seedDatabase = async (prisma: PrismaClient) => {
   const scenes = await collectScenes();
   const characters = await collectCharacters();
+  const sceneCharacterCoordinatesBySceneSlug = await collectSceneCharacterCoordinates();
 
   const sceneBySlug = new Map<string, number>();
   const characterByName = new Map<string, number>();
@@ -193,19 +269,39 @@ const seedDatabase = async (prisma: PrismaClient) => {
     characterByName.set(upserted.name, upserted.id);
   }
 
+  let sceneCharacterRowCount = 0;
+
   for (const scene of scenes) {
     const sceneId = sceneBySlug.get(scene.slug);
     if (!sceneId) {
       throw new Error(`Missing scene id for slug ${scene.slug}`);
     }
 
+    const sceneCharacters = sceneCharacterCoordinatesBySceneSlug.get(scene.slug);
+    if (!sceneCharacters) {
+      throw new Error(
+        `Missing scene character coordinates for scene ${scene.slug}. Add ${scene.slug}.csv under ${SCENE_CHARACTERS_DIR}.`,
+      );
+    }
+
     for (const characterName of characters) {
+      if (!sceneCharacters.has(characterName)) {
+        throw new Error(
+          `Missing coordinates for character ${characterName} in scene ${scene.slug}.`,
+        );
+      }
+    }
+
+    for (const characterEntry of sceneCharacters.values()) {
+      const characterName = characterEntry.characterName;
       const characterId = characterByName.get(characterName);
       if (!characterId) {
-        throw new Error(`Missing character id for name ${characterName}`);
+        throw new Error(
+          `CSV for scene ${scene.slug} references character ${characterName}, but no matching character asset exists.`,
+        );
       }
 
-      const { xNorm, yNorm } = placeholderCoordinates(scene.slug, characterName);
+      const { xNorm, yNorm } = characterEntry;
 
       await prisma.sceneCharacter.upsert({
         where: {
@@ -227,12 +323,14 @@ const seedDatabase = async (prisma: PrismaClient) => {
           tolerance_norm: DEFAULT_TOLERANCE_NORM,
         },
       });
+
+      sceneCharacterRowCount += 1;
     }
   }
 
   // Keep output concise and deterministic for CI/dev logs.
   console.log(
-    `Seeded ${scenes.length} scenes, ${characters.length} characters, ${scenes.length * characters.length} scene-character rows.`,
+    `Seeded ${scenes.length} scenes, ${characters.length} characters, ${sceneCharacterRowCount} scene-character rows.`,
   );
 };
 
