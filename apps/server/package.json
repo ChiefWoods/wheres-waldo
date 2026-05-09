@@ -19,6 +19,7 @@
     "fmt:check": "oxfmt --check --no-error-on-unmatched-pattern",
     "db:migrate": "bunx --bun prisma migrate dev --name init",
     "db:generate": "bunx --bun prisma generate",
+    "db:seed": "bun prisma/seed.ts",
     "db:studio": "bunx --bun -p better-sqlite3 -p prisma prisma studio --url file:./data/dev.db"
   },
   "keywords": [],
