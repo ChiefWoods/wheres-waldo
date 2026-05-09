@@ -19,7 +19,10 @@
     "format": "oxfmt --no-error-on-unmatched-pattern",
     "format:check": "oxfmt --check --no-error-on-unmatched-pattern",
     "fmt": "oxfmt --no-error-on-unmatched-pattern",
-    "fmt:check": "oxfmt --check --no-error-on-unmatched-pattern"
+    "fmt:check": "oxfmt --check --no-error-on-unmatched-pattern",
+    "db:migrate": "bunx --bun prisma migrate dev --name init",
+    "db:generate": "bunx --bun prisma generate",
+    "db:studio": "bunx --bun -p better-sqlite3 -p prisma prisma studio --url file:./data/dev.db"
   },
   "keywords": [],
   "author": "",
