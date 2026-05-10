@@ -25,4 +25,4 @@ RUN rm -rf /apps/server/node_modules
 COPY --from=build-env /apps/server/node_modules /apps/server/node_modules
 COPY --from=build-env /apps/server/generated /apps/server/generated
 WORKDIR /apps/server
-CMD ["bun", "run", "start"]
+CMD ["sh", "-c", "bun run db:deploy && bun run start"]
