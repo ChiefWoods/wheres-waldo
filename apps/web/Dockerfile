@@ -5,16 +5,11 @@ WORKDIR /
 RUN bun ci
 
 FROM oven/bun:1.3.13 AS build-env
-COPY . /
-COPY --from=development-dependencies-env /node_modules /node_modules
+COPY --from=development-dependencies-env / /
 WORKDIR /apps/server
-# Installs prisma for db:generate
-RUN bun install --frozen-lockfile
-# Prisma generate only needs a syntactically valid URL at build time.
 ENV DATABASE_URL=file:./data/dev.db
 RUN bun run db:generate
 WORKDIR /apps/web
-RUN bun install --frozen-lockfile
 ARG VITE_API_URL
 ENV VITE_API_URL=${VITE_API_URL}
 RUN bun run build
