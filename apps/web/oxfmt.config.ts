@@ -24,7 +24,7 @@ export default defineConfig({
       files: ["**/*.{js,jsx,ts,tsx,md,mdx,html}"],
       options: {
         sortTailwindcss: {
-          stylesheet: "./src/app/globals.css",
+          stylesheet: "../../packages/ui/src/styles/globals.css",
           functions: ["clsx", "cn"],
           preserveWhitespace: true,
         },
