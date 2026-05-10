@@ -24,6 +24,11 @@ type MenuState = ClickAttempt & {
   sceneY: number;
 };
 
+type HoverState = {
+  sceneX: number;
+  sceneY: number;
+};
+
 type RenderedSceneBox = {
   offsetX: number;
   offsetY: number;
@@ -57,6 +62,7 @@ function PlaySessionRoute() {
   } | null>(null);
   const [lastAttempt, setLastAttempt] = useState<ClickAttempt | null>(null);
   const [menuState, setMenuState] = useState<MenuState | null>(null);
+  const [hoverState, setHoverState] = useState<HoverState | null>(null);
   const [asideMaxHeight, setAsideMaxHeight] = useState<number | null>(null);
   const [renderedSceneBox, setRenderedSceneBox] = useState<RenderedSceneBox | null>(null);
   const [redirectCountdown, setRedirectCountdown] = useState(3);
@@ -264,6 +270,7 @@ function PlaySessionRoute() {
   useEffect(() => {
     if (isSessionNotFound || isGameFinished) {
       setMenuState(null);
+      setHoverState(null);
     }
   }, [isSessionNotFound, isGameFinished]);
 
@@ -401,12 +408,50 @@ function PlaySessionRoute() {
       return;
     }
 
+    const sceneX = event.clientX - event.currentTarget.getBoundingClientRect().left;
+    const sceneY = event.clientY - event.currentTarget.getBoundingClientRect().top;
+
     setLastAttempt(clickAttempt);
+    setHoverState({
+      sceneX,
+      sceneY,
+    });
     setMenuState({
       ...clickAttempt,
-      sceneX: event.clientX - event.currentTarget.getBoundingClientRect().left,
-      sceneY: event.clientY - event.currentTarget.getBoundingClientRect().top,
+      sceneX,
+      sceneY,
     });
+  };
+
+  const handleScenePointerMove = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    if (!sceneAsset || sessionQuery.isPending || isSessionNotFound || isGameFinished) {
+      setHoverState(null);
+      return;
+    }
+
+    if (menuState) {
+      return;
+    }
+
+    const clickAttempt = computeClickAttempt(event);
+    if (!clickAttempt) {
+      setHoverState(null);
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    setHoverState({
+      sceneX: event.clientX - rect.left,
+      sceneY: event.clientY - rect.top,
+    });
+  };
+
+  const handleScenePointerLeave = () => {
+    if (menuState) {
+      return;
+    }
+
+    setHoverState(null);
   };
 
   const handleCharacterSelection = (characterId: number) => {
@@ -500,6 +545,8 @@ function PlaySessionRoute() {
               ref={sceneButtonRef}
               type="button"
               onClick={handleSceneClick}
+              onMouseMove={handleScenePointerMove}
+              onMouseLeave={handleScenePointerLeave}
               className="relative block h-[clamp(380px,68vh,860px)] w-full min-w-0 overflow-hidden rounded-lg border bg-muted text-left"
               disabled={
                 !sceneAsset || sessionQuery.isPending || isSessionNotFound || isGameFinished
@@ -527,6 +574,16 @@ function PlaySessionRoute() {
                 </div>
               )}
             </button>
+
+            {hoverState && (
+              <div
+                className="pointer-events-none absolute z-10 size-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-yellow-400 bg-yellow-400/30 shadow-[0_0_0_2px_rgba(0,0,0,0.35)]"
+                style={{
+                  left: `${hoverState.sceneX}px`,
+                  top: `${hoverState.sceneY}px`,
+                }}
+              />
+            )}
 
             {!isSessionNotFound && renderedSceneBox
               ? sceneCharactersWithAssets
