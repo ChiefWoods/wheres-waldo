@@ -1,0 +1,88 @@
+name: CI Web
+
+on:
+  pull_request:
+    paths:
+      - apps/server/**
+      - apps/web/**
+      - packages/ui/**
+      - package.json
+      - bun.lock
+      - turbo.json
+      - tsconfig.json
+      - .github/workflows/ci-server.yml
+      - .github/workflows/ci-web.yml
+  push:
+    branches:
+      - main
+    paths:
+      - apps/server/**
+      - apps/web/**
+      - packages/ui/**
+      - package.json
+      - bun.lock
+      - turbo.json
+      - tsconfig.json
+      - .github/workflows/ci-server.yml
+      - .github/workflows/ci-web.yml
+  workflow_dispatch:
+
+concurrency:
+  group: ci-web-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: ${{ 'file:./data/dev.db' }}
+
+jobs:
+  server:
+    name: Server Prerequisite
+    uses: ./.github/workflows/ci-server.yml
+    secrets: inherit
+
+  verify:
+    name: Lint, Format, Typecheck, Build, DOM
+    needs: server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: current
+          check-latest: true
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        working-directory: apps/server
+        run: bun run db:generate
+
+      - name: Lint
+        working-directory: apps/web
+        run: bun run lint
+
+      - name: Format
+        working-directory: apps/web
+        run: bun run format:check
+
+      - name: Typecheck
+        working-directory: apps/web
+        run: bun run typecheck
+
+      - name: Build
+        working-directory: apps/web
+        run: bun run build
+
+      - name: DOM tests
+        working-directory: apps/web
+        run: bun run test:dom

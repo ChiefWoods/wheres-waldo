@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "build": "turbo build",
+    "ci:server": "act workflow_dispatch -W .github/workflows/ci-server.yml",
+    "ci:web": "act pull_request -W .github/workflows/ci-web.yml",
     "dev": "turbo dev",
     "test": "turbo test",
     "lint": "turbo lint",

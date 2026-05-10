@@ -1,0 +1,59 @@
+name: CI Server
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-server-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: ${{ 'file:./data/dev.db' }}
+
+jobs:
+  verify:
+    name: Lint, Format, Prisma, Typecheck, Unit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: current
+          check-latest: true
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        working-directory: apps/server
+        run: bun run lint
+
+      - name: Format
+        working-directory: apps/server
+        run: bun run format:check
+
+      - name: Generate Prisma client
+        working-directory: apps/server
+        run: bun run db:generate
+
+      - name: Apply Prisma migrations
+        working-directory: apps/server
+        run: bunx --bun prisma migrate deploy
+
+      - name: Typecheck
+        working-directory: apps/server
+        run: bunx --bun tsc --noEmit
+
+      - name: Unit tests
+        working-directory: apps/server
+        run: bun run test
