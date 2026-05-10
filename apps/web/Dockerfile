@@ -14,6 +14,7 @@ RUN bun install --frozen-lockfile
 ENV DATABASE_URL=file:./data/dev.db
 RUN bun run db:generate
 WORKDIR /apps/web
+RUN bun install --frozen-lockfile
 ARG VITE_API_URL
 ENV VITE_API_URL=${VITE_API_URL}
 RUN bun run build
