@@ -21,6 +21,7 @@ RUN bun run db:generate
 
 FROM oven/bun:1.3.13
 COPY --from=production-dependencies-env / /
+RUN rm -rf /apps/server/node_modules
 COPY --from=build-env /apps/server/node_modules /apps/server/node_modules
 COPY --from=build-env /apps/server/generated /apps/server/generated
 WORKDIR /apps/server
