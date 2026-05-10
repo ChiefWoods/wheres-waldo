@@ -51,14 +51,14 @@ function HomeRoute() {
     <section className="flex flex-col gap-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Choose a Scene</h1>
-        <p className="text-muted-foreground text-sm">Pick a scene to start playing.</p>
+        <p className="text-sm text-muted-foreground">Pick a scene to start playing.</p>
         {sceneListQuery.isError ? (
-          <p className="text-destructive text-sm" role="alert">
+          <p className="text-sm text-destructive" role="alert">
             Failed to load scenes from server.
           </p>
         ) : null}
         {startError ? (
-          <p className="text-destructive text-sm" role="alert">
+          <p className="text-sm text-destructive" role="alert">
             {startError}
           </p>
         ) : null}
@@ -71,7 +71,7 @@ function HomeRoute() {
             key={scene.slug}
             disabled={sceneListQuery.isPending || startSessionMutation.isPending}
             onClick={() => void handleStartSession(scene.slug)}
-            className="bg-card text-card-foreground border-border hover:border-foreground/20 focus-visible:border-ring focus-visible:ring-ring/50 rounded-lg border p-4 text-left transition-colors outline-none focus-visible:ring-3 disabled:opacity-60"
+            className="rounded-lg border border-border bg-card p-4 text-left text-card-foreground transition-colors outline-none hover:border-foreground/20 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60"
           >
             <h2 className="font-medium">{scene.name}</h2>
             <img
@@ -80,7 +80,7 @@ function HomeRoute() {
               className="mt-3 aspect-[4/3] w-full rounded object-cover"
               loading="lazy"
             />
-            <p className="text-muted-foreground mt-2 text-xs">
+            <p className="mt-2 text-xs text-muted-foreground">
               {startSessionMutation.isPending
                 ? "Starting session..."
                 : sceneListQuery.isPending

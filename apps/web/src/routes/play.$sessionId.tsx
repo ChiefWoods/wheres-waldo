@@ -435,20 +435,20 @@ function PlaySessionRoute() {
     <section className="relative left-1/2 w-[min(1600px,calc(100vw-1.5rem))] -translate-x-1/2 space-y-4">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Game Session</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-sm text-muted-foreground">
           Scene: <span className="font-medium">{scene?.name ?? "Loading..."}</span>
         </p>
       </header>
 
-      <div className="grid gap-4 lg:gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-6">
         <aside
-          className="bg-card text-card-foreground border-border flex h-full min-h-0 flex-col rounded-lg border p-4"
+          className="flex h-full min-h-0 flex-col rounded-lg border border-border bg-card p-4 text-card-foreground"
           style={asideMaxHeight ? { maxHeight: `${Math.max(0, asideMaxHeight)}px` } : undefined}
         >
-          <h2 className="text-sm font-semibold uppercase tracking-wide">Find These Characters</h2>
+          <h2 className="text-sm font-semibold tracking-wide uppercase">Find These Characters</h2>
           <ul className="mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
             {isSessionNotFound ? null : sessionQuery.isPending ? (
-              <li className="text-muted-foreground text-sm">Loading scene targets...</li>
+              <li className="text-sm text-muted-foreground">Loading scene targets...</li>
             ) : sceneCharactersWithAssets.length ? (
               sceneCharactersWithAssets.map((character) => {
                 const isFound = foundCharacterIds.has(character.id);
@@ -462,10 +462,10 @@ function PlaySessionRoute() {
                       <img
                         src={character.imageUrl}
                         alt={character.name}
-                        className="bg-muted aspect-square w-full rounded-md border object-contain p-1"
+                        className="aspect-square w-full rounded-md border bg-muted object-contain p-1"
                       />
                     ) : (
-                      <div className="bg-muted text-muted-foreground grid aspect-square w-full place-items-center rounded-md border text-[10px]">
+                      <div className="grid aspect-square w-full place-items-center rounded-md border bg-muted text-[10px] text-muted-foreground">
                         N/A
                       </div>
                     )}
@@ -478,7 +478,7 @@ function PlaySessionRoute() {
                 );
               })
             ) : (
-              <li className="text-muted-foreground text-sm">
+              <li className="text-sm text-muted-foreground">
                 No characters configured for this scene.
               </li>
             )}
@@ -486,7 +486,7 @@ function PlaySessionRoute() {
         </aside>
 
         <div ref={rightColumnRef} className="space-y-3">
-          <div className="bg-card text-card-foreground border-border flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+          <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm text-card-foreground">
             <span>
               Elapsed: <span className="font-mono">{formatElapsedMs(elapsedMs)}</span>
             </span>
@@ -500,13 +500,13 @@ function PlaySessionRoute() {
               ref={sceneButtonRef}
               type="button"
               onClick={handleSceneClick}
-              className="bg-muted relative block h-[clamp(380px,68vh,860px)] w-full min-w-0 overflow-hidden rounded-lg border text-left"
+              className="relative block h-[clamp(380px,68vh,860px)] w-full min-w-0 overflow-hidden rounded-lg border bg-muted text-left"
               disabled={
                 !sceneAsset || sessionQuery.isPending || isSessionNotFound || isGameFinished
               }
             >
               {isSessionNotFound ? (
-                <div className="text-muted-foreground flex h-full items-center justify-center text-base font-medium">
+                <div className="flex h-full items-center justify-center text-base font-medium text-muted-foreground">
                   Session not found
                 </div>
               ) : sceneAsset ? (
@@ -522,7 +522,7 @@ function PlaySessionRoute() {
                   }}
                 />
               ) : (
-                <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                   Scene asset not found.
                 </div>
               )}
@@ -554,15 +554,15 @@ function PlaySessionRoute() {
 
             {isGameFinished && (
               <div className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-black/55 p-4 text-center">
-                <div className="bg-card text-card-foreground border-border w-full max-w-sm rounded-lg border p-4">
+                <div className="w-full max-w-sm rounded-lg border border-border bg-card p-4 text-card-foreground">
                   <p className="text-lg font-semibold">All characters found!</p>
-                  <p className="text-muted-foreground mt-2 text-sm">
+                  <p className="mt-2 text-sm text-muted-foreground">
                     Time spent: <span className="font-mono">{formatElapsedMs(elapsedMs)}</span>
                   </p>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-sm text-muted-foreground">
                     Attempts: <span className="font-mono">{sessionData?.attempts ?? 0}</span>
                   </p>
-                  <p className="text-muted-foreground mt-2 text-xs">
+                  <p className="mt-2 text-xs text-muted-foreground">
                     Redirecting to leaderboard in {redirectCountdown}s...
                   </p>
                 </div>
@@ -572,14 +572,14 @@ function PlaySessionRoute() {
             {menuState && sceneCharactersWithAssets.length > 0 && (
               <div
                 ref={menuRef}
-                className="bg-popover text-popover-foreground border-border absolute z-20 min-w-44 rounded-md border p-1 shadow-md ring-1 ring-foreground/10"
+                className="absolute z-20 min-w-44 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10"
                 style={{
                   left: `${menuState.sceneX}px`,
                   top: `${menuState.sceneY + 8}px`,
                   transform: "translateX(-50%)",
                 }}
               >
-                <p className="text-muted-foreground px-2 py-1 text-xs font-medium">
+                <p className="px-2 py-1 text-xs font-medium text-muted-foreground">
                   Select character
                 </p>
                 {sceneCharactersWithAssets.map((character) => {
@@ -589,7 +589,7 @@ function PlaySessionRoute() {
                     <button
                       key={character.id}
                       type="button"
-                      className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
                       onClick={() => handleCharacterSelection(character.id)}
                       disabled={isFound || guessMutation.isPending}
                     >
@@ -603,10 +603,10 @@ function PlaySessionRoute() {
           </div>
 
           {sessionQuery.isError && !isSessionNotFound && (
-            <p className="text-destructive text-sm">Failed to load session details.</p>
+            <p className="text-sm text-destructive">Failed to load session details.</p>
           )}
 
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             Click the scene to select a character at that point.
           </p>
 
@@ -615,12 +615,12 @@ function PlaySessionRoute() {
             <div className="rounded-md border border-dashed p-3">
               <p className="text-xs font-semibold tracking-wide">Dev Click Coordinates</p>
               {lastAttempt ? (
-                <p className="text-muted-foreground mt-1 text-sm font-mono">
+                <p className="mt-1 font-mono text-sm text-muted-foreground">
                   actual=({lastAttempt.actualX.toFixed(1)}, {lastAttempt.actualY.toFixed(1)}) norm=(
                   {lastAttempt.normalizedX.toFixed(4)}, {lastAttempt.normalizedY.toFixed(4)})
                 </p>
               ) : (
-                <p className="text-muted-foreground mt-1 text-sm">No click recorded yet.</p>
+                <p className="mt-1 text-sm text-muted-foreground">No click recorded yet.</p>
               )}
             </div>
           )}

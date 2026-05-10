@@ -18,7 +18,7 @@ bun run build
 
 ```sh
 bun run start
-``` 
+```
 
 ### Testing
 

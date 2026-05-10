@@ -2,11 +2,14 @@
   "name": "server",
   "version": "1.0.0",
   "description": "This project was bootstrapped with Fastify-CLI.",
-  "main": "index.ts",
-  "type": "module",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
   "directories": {
     "test": "test"
   },
+  "type": "module",
+  "main": "index.ts",
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
@@ -24,9 +27,6 @@
     "db:reset": "bunx --bun prisma migrate reset",
     "db:studio": "bunx --bun -p better-sqlite3 -p prisma prisma studio --url file:./data/dev.db"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@fastify/autoload": "^6.0.0",
     "@fastify/sensible": "^6.0.0",
@@ -37,8 +37,8 @@
     "fastify": "^5.0.0",
     "fastify-cli": "^8.0.0",
     "fastify-plugin": "^5.0.0",
-    "superjson": "^2.2.6",
     "papaparse": "^5.5.3",
+    "superjson": "^2.2.6",
     "zod": "^4.4.3"
   },
   "devDependencies": {

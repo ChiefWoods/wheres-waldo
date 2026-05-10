@@ -227,17 +227,17 @@ function LeaderboardRoute() {
       </Tabs>
 
       {sceneListQuery.isError && (
-        <p className="text-destructive text-sm" role="alert">
+        <p className="text-sm text-destructive" role="alert">
           Failed to load scenes from server.
         </p>
       )}
       {leaderboardQuery.isError && (
-        <p className="text-destructive text-sm" role="alert">
+        <p className="text-sm text-destructive" role="alert">
           Failed to load leaderboard.
         </p>
       )}
 
-      <div className="bg-card text-card-foreground border-border rounded-lg border p-3">
+      <div className="rounded-lg border border-border bg-card p-3 text-card-foreground">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -281,7 +281,7 @@ function LeaderboardRoute() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={3} className="text-muted-foreground py-8 text-center">
+                <TableCell colSpan={3} className="py-8 text-center text-muted-foreground">
                   No leaderboard entries for this scene yet.
                 </TableCell>
               </TableRow>
@@ -292,7 +292,7 @@ function LeaderboardRoute() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
           </p>
           <Select

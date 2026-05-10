@@ -18,8 +18,8 @@ function RootLayout() {
   const isDark = theme === "dark" || (theme === "system" && prefersDark);
 
   return (
-    <div className="bg-background text-foreground min-h-svh">
-      <header className="border-border border-b">
+    <div className="min-h-svh bg-background text-foreground">
+      <header className="border-b border-border">
         <nav className="mx-auto flex w-full max-w-5xl items-center gap-4 px-4 py-3 text-sm">
           <Link to="/" className="font-medium">
             Where&apos;s Waldo
@@ -31,7 +31,7 @@ function RootLayout() {
               page: 1,
               pageSize: 20,
             }}
-            className="[&.active]:text-foreground text-muted-foreground transition-colors hover:text-foreground"
+            className="text-muted-foreground transition-colors hover:text-foreground [&.active]:text-foreground"
             activeProps={{ className: "active" }}
           >
             Leaderboard
