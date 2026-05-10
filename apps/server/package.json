@@ -20,6 +20,8 @@
     "format:check": "oxfmt --check --no-error-on-unmatched-pattern",
     "fmt": "oxfmt --no-error-on-unmatched-pattern",
     "fmt:check": "oxfmt --check --no-error-on-unmatched-pattern",
+    "docker:build": "docker build --no-cache --progress=plain -f Dockerfile -t wheres-waldo-server:local ../..",
+    "docker:run": "docker run --rm -it --env-file .env.production wheres-waldo-server:local",
     "db:migrate": "bunx --bun prisma migrate dev --name init",
     "db:deploy": "bunx --bun prisma migrate deploy",
     "db:generate": "bunx --bun prisma generate",
