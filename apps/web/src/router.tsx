@@ -5,6 +5,7 @@ import { routeTree } from "./routeTree.gen";
 
 export const router = createRouter({
   routeTree,
+  basepath: import.meta.env.BASE_URL,
   defaultPreload: "intent",
   defaultNotFoundComponent: NotFoundPage,
 });
