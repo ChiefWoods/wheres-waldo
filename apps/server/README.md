@@ -1,23 +1,47 @@
-# Getting Started with [Fastify-CLI](https://www.npmjs.com/package/fastify-cli)
-This project was bootstrapped with Fastify-CLI.
+# Server
 
-## Available Scripts
+## Setup
 
-In the project directory, you can run:
+1. Set up env file
 
-### `npm run dev`
+```sh
+cp .env.example .env.development
+```
 
-To start the app in dev mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+3. Perform Prisma migration
 
-### `npm start`
+```sh
+bun run db:migrate
+```
 
-For production mode
+4. Seed database
 
-### `npm run test`
+```sh
+bun run db:seed
+```
 
-Run the test cases.
+5. Generate Prisma client
 
-## Learn More
+```sh
+bun run db:generate
+```
 
-To learn Fastify, check out the [Fastify documentation](https://fastify.dev/docs/latest/).
+6. Start dev server
+
+```sh
+bun run dev
+```
+
+### Testing
+
+1. Set up env file
+
+```sh
+cp .env.example .env.test
+```
+
+2. Run all tests.
+
+```sh
+bun run test
+```
