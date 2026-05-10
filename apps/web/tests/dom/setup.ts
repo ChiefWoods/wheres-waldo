@@ -2,6 +2,55 @@ import { cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, vi } from "vitest";
 
+function createMemoryStorage(): Storage {
+  const store = new Map<string, string>();
+
+  return {
+    get length() {
+      return store.size;
+    },
+    clear() {
+      store.clear();
+    },
+    getItem(key: string) {
+      return store.has(key) ? store.get(key)! : null;
+    },
+    key(index: number) {
+      return Array.from(store.keys())[index] ?? null;
+    },
+    removeItem(key: string) {
+      store.delete(key);
+    },
+    setItem(key: string, value: string) {
+      store.set(key, String(value));
+    },
+  };
+}
+
+const testLocalStorage = (() => {
+  try {
+    if (window.localStorage) {
+      return window.localStorage;
+    }
+  } catch {
+    // Fall through to in-memory storage in runtimes without web storage support.
+  }
+
+  return createMemoryStorage();
+})();
+
+Object.defineProperty(window, "localStorage", {
+  configurable: true,
+  writable: true,
+  value: testLocalStorage,
+});
+
+Object.defineProperty(globalThis, "localStorage", {
+  configurable: true,
+  writable: true,
+  value: testLocalStorage,
+});
+
 if (!window.matchMedia) {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
@@ -52,6 +101,8 @@ if (!globalThis.ResizeObserver) {
 
 afterEach(() => {
   cleanup();
-  localStorage.clear();
+  if (window.localStorage) {
+    window.localStorage.clear();
+  }
   document.documentElement.classList.remove("light", "dark");
 });
