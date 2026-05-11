@@ -21,8 +21,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command:
-        "DATABASE_URL=file:./data/dev.db AUTO_SEED_ON_EMPTY_DB=true PORT=3456 bun src/index.ts",
+      command: "NODE_ENV=test bun src/index.ts",
       cwd: "../server",
       url: "http://127.0.0.1:3456/",
       timeout: 120_000,
@@ -32,8 +31,7 @@ export default defineConfig({
       name: "backend",
     },
     {
-      command:
-        "VITE_API_PROXY_TARGET=http://127.0.0.1:3456 bunx vite --config vite.config.ts --host 127.0.0.1 --port 4173",
+      command: "bunx vite --host 127.0.0.1 --port 4173 --mode test",
       cwd: ".",
       url: "http://127.0.0.1:4173/",
       timeout: 120_000,
