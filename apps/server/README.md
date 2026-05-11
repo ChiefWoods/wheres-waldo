@@ -2,31 +2,33 @@
 
 ## Setup
 
+### Development
+
 1. Set up env file
 
 ```sh
 cp .env.example .env.development
 ```
 
-3. Perform Prisma migration
+2. Perform Prisma migration
 
 ```sh
-bun run db:migrate
+bun run db:deploy
 ```
 
-4. Seed database
+3. Seed database
 
 ```sh
 bun run db:seed
 ```
 
-5. Generate Prisma client
+4. Generate Prisma client
 
 ```sh
 bun run db:generate
 ```
 
-6. Start dev server
+5. Start dev server
 
 ```sh
 bun run dev
@@ -40,7 +42,13 @@ bun run dev
 cp .env.example .env.test
 ```
 
-2. Run all tests.
+2. Perform Prisma migration
+
+```sh
+NODE_ENV=test bun run db:deploy
+```
+
+3. Run all tests
 
 ```sh
 bun run test
