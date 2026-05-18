@@ -21,7 +21,7 @@ bun run dev
 1. Set up env file
 
 ```sh
-cp .env.example .env.development
+cp .env.example .env.production
 ```
 
 2. Build app
